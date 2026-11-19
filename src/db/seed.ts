@@ -32,10 +32,50 @@ type BuiltInField = {
   step?: number;
 };
 
+/**
+ * Cable attachment options, grouped as they appear in the setup sheet.
+ * Values are stored as text in settings snapshots and config keys, so never
+ * rename an existing entry (that would split its PR history). Add new ones freely.
+ */
+export const CABLE_ATTACHMENTS: string[] = [
+  // Ropes and straps
+  "Rope",
+  "Tricep strap",
+  "Single tricep strap",
+  "Stirrup strap handle",
+  // Bars
+  "Straight bar",
+  "EZ bar",
+  "V-bar",
+  "Pressdown bar",
+  "Rotating V-grip",
+  "Camber multi-grip bar",
+  "Dual-cable swivel bar",
+  // Handles
+  "D-handle",
+  "Shovel handle",
+  "Bowtie handle",
+  "Crossbow handle",
+  "Fat-grip triangle",
+  // MAG-style grips
+  "MAG close neutral",
+  "MAG close pronated",
+  "MAG close supinated",
+  "MAG medium neutral",
+  "MAG medium pronated",
+  "MAG medium supinated",
+  "MAG wide",
+  // Wearables
+  "Wrist cuff",
+  "Ankle strap",
+  "Thigh strap",
+  "Ab crunch harness",
+  "Hip belt",
+];
+
 /** Predefined fields per equipment category (spec 7.3). IDs are stable. */
 const BUILT_IN_FIELDS: BuiltInField[] = [
-  { id: "f-cable-attachment", type: "cable", label: "Attachment", valueType: "select",
-    options: ["Rope", "Straight bar", "V-bar", "D-handle", "Wrist cuff", "EZ bar", "Ankle strap"] },
+  { id: "f-cable-attachment", type: "cable", label: "Attachment", valueType: "select", options: CABLE_ATTACHMENTS },
   { id: "f-cable-pulley", type: "cable", label: "Pulley", valueType: "select", options: ["Single", "Double"] },
   { id: "f-cable-height", type: "cable", label: "Height", valueType: "number", step: 1 },
   { id: "f-cable-position", type: "cable", label: "Position", valueType: "text" },
@@ -95,6 +135,20 @@ export async function ensureSeed(): Promise<void> {
       updatedAt: t,
     }));
     if (newFields.length) await db.equipmentFieldDefs.bulkAdd(newFields);
+
+    // Built-in select fields that already exist pick up options added since
+    // they were seeded. Built-in options come first in their defined order,
+    // followed by any other options already stored, so nothing is lost.
+    for (const f of BUILT_IN_FIELDS) {
+      if (!f.options || !haveFields.has(f.id)) continue;
+      const existing = await db.equipmentFieldDefs.get(f.id);
+      if (!existing?.isBuiltIn) continue;
+      const current = existing.options ?? [];
+      const merged = [...f.options, ...current.filter((o) => !f.options!.includes(o))];
+      if (merged.length !== current.length || merged.some((o, i) => o !== current[i])) {
+        await db.equipmentFieldDefs.update(f.id, { options: merged, updatedAt: t });
+      }
+    }
 
     const haveFamilies = new Set(await db.exerciseFamilies.toCollection().primaryKeys());
     const newFamilies = LIBRARY_FAMILIES.filter((f) => !haveFamilies.has(f.id)).map((f) => ({
