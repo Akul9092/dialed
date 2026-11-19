@@ -40,37 +40,18 @@ type BuiltInField = {
 export const CABLE_ATTACHMENTS: string[] = [
   // Ropes and straps
   "Rope",
+  "Single rope",
   "Tricep strap",
-  "Single tricep strap",
-  "Stirrup strap handle",
   // Bars
   "Straight bar",
+  "Lat bar",
   "EZ bar",
   "V-bar",
-  "Pressdown bar",
-  "Rotating V-grip",
-  "Camber multi-grip bar",
-  "Dual-cable swivel bar",
   // Handles
   "D-handle",
-  "Shovel handle",
-  "Bowtie handle",
-  "Crossbow handle",
-  "Fat-grip triangle",
-  // MAG-style grips
-  "MAG close neutral",
-  "MAG close pronated",
-  "MAG close supinated",
-  "MAG medium neutral",
-  "MAG medium pronated",
-  "MAG medium supinated",
-  "MAG wide",
   // Wearables
   "Wrist cuff",
   "Ankle strap",
-  "Thigh strap",
-  "Ab crunch harness",
-  "Hip belt",
 ];
 
 /** Predefined fields per equipment category (spec 7.3). IDs are stable. */
