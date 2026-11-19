@@ -22,7 +22,7 @@ import type {
  * whenever the schema changes. Dexie upgrades existing data in place.
  * Backups record this number so imports can be migrated too.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export class DialedDB extends Dexie {
   trainingPlans!: EntityTable<TrainingPlan, "id">;
@@ -64,6 +64,26 @@ export class DialedDB extends Dexie {
       cardioEntries: "id, sessionId, date",
       settings: "id",
     });
+
+    // v2: top and back-off sets merged into "working" (spec 20.11).
+    // Indexes are unchanged, only stored values are rewritten.
+    this.version(2)
+      .stores({})
+      .upgrade(async (tx) => {
+        const merge = (t: string) => (t === "top" || t === "backoff" ? "working" : t);
+        await tx
+          .table("templateExercises")
+          .toCollection()
+          .modify((row: { defaultSets: string[] }) => {
+            row.defaultSets = row.defaultSets.map(merge);
+          });
+        await tx
+          .table("exerciseSets")
+          .toCollection()
+          .modify((row: { type: string }) => {
+            row.type = merge(row.type);
+          });
+      });
   }
 }
 

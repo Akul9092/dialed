@@ -96,13 +96,23 @@ export async function planSessionCount(planId: string): Promise<number> {
 export async function deletePlan(id: string): Promise<void> {
   await db.transaction(
     "rw",
-    [db.trainingPlans, db.trainingSplits, db.workoutTemplates, db.recurringExtras, db.workoutSessions, db.settings],
+    [
+      db.trainingPlans,
+      db.trainingSplits,
+      db.workoutTemplates,
+      db.templateExercises,
+      db.recurringExtras,
+      db.workoutSessions,
+      db.settings,
+    ],
     async () => {
       if ((await planSessionCount(id)) > 0) {
         throw new Error("This plan has logged workouts and can't be deleted.");
       }
       await db.trainingSplits.where("planId").equals(id).delete();
-      await db.workoutTemplates.where("planId").equals(id).delete();
+      const templateIds = await db.workoutTemplates.where("planId").equals(id).primaryKeys();
+      await db.templateExercises.where("templateId").anyOf(templateIds).delete();
+      await db.workoutTemplates.bulkDelete(templateIds);
       await db.recurringExtras.where("planId").equals(id).delete();
       await db.trainingPlans.delete(id);
 

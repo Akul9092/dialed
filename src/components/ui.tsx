@@ -257,3 +257,63 @@ export function EmptyState({
     </div>
   );
 }
+
+/* -------------------------------- Stepper ------------------------------- */
+
+export function Stepper({
+  label,
+  value,
+  onChange,
+  min = 0,
+  max = 20,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+}) {
+  const btn =
+    "flex h-10 w-10 items-center justify-center rounded-full bg-surface text-[22px] font-medium text-accent transition active:scale-90 disabled:opacity-30 dark:bg-[#3a3a3e]";
+  return (
+    <div className="flex min-h-14 items-center justify-between gap-3 px-4">
+      <span className="text-[17px]">{label}</span>
+      <div className="flex items-center gap-3">
+        <button type="button" aria-label={`Fewer ${label}`} className={btn} disabled={value <= min} onClick={() => onChange(value - 1)}>
+          −
+        </button>
+        <span className="tnum w-6 text-center text-[19px] font-semibold" aria-live="polite">
+          {value}
+        </span>
+        <button type="button" aria-label={`More ${label}`} className={btn} disabled={value >= max} onClick={() => onChange(value + 1)}>
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl bg-surface-2 px-4 py-2.5 text-left"
+    >
+      <span>
+        <span className="block text-[16px]">{label}</span>
+        {hint && <span className="block text-[13px] text-muted">{hint}</span>}
+      </span>
+      <span className={cx("relative h-[31px] w-[51px] shrink-0 rounded-full transition", checked ? "bg-accent" : "bg-muted/30")}>
+        <span
+          className={cx(
+            "absolute top-[2px] h-[27px] w-[27px] rounded-full bg-white shadow transition-all",
+            checked ? "left-[22px]" : "left-[2px]",
+          )}
+        />
+      </span>
+    </button>
+  );
+}

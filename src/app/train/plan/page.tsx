@@ -32,6 +32,12 @@ function PlanPage() {
   const plan = useLiveQuery(async () => (await db.trainingPlans.get(id)) ?? null, [id]);
   const split = useLiveQuery(async () => (await db.trainingSplits.where("planId").equals(id).first()) ?? null, [id]);
   const sessions = useLiveQuery(() => db.workoutSessions.where("planId").equals(id).toArray(), [id]);
+  // Exercise count per template, to label each workout day in the split.
+  const templateCounts = useLiveQuery(async () => {
+    const templateIds = await db.workoutTemplates.where("planId").equals(id).primaryKeys();
+    const rows = await db.templateExercises.where("templateId").anyOf(templateIds).toArray();
+    return rows.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.templateId]: (acc[r.templateId] ?? 0) + 1 }), {});
+  }, [id]);
   const [editing, setEditing] = useState(false);
   const close = useCallback(() => setEditing(false), []);
 
@@ -95,7 +101,15 @@ function PlanPage() {
         </div>
       </Section>
 
-      {split && <SplitEditor split={split} planId={plan.id} />}
+      {split && (
+        <SplitEditor
+          split={split}
+          planId={plan.id}
+          exerciseCounts={Object.fromEntries(
+            split.days.map((d) => [d.id, d.templateId ? (templateCounts?.[d.templateId] ?? 0) : 0]),
+          )}
+        />
+      )}
 
       <Section
         title="Schedule"
@@ -129,7 +143,7 @@ function PlanPage() {
       </Section>
 
       <p className="px-4 text-[13px] leading-snug text-muted">
-        Next build: attach a workout template (the exercises) to each day and start logging.
+        Tap a workout day to choose its exercises. Logging workouts comes next.
       </p>
 
       {editing && (

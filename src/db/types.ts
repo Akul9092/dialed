@@ -119,6 +119,10 @@ export interface ExerciseVariation extends Timestamped {
   name: string; // "Incline Dumbbell Press"
   equipmentType: EquipmentType;
   loadType: LoadType;
+  /** Suggested weight entry mode when the exercise is added. */
+  defaultWeightInterpretation?: WeightInterpretation;
+  /** Single-arm or single-leg movement, logged per side by default. */
+  unilateral?: boolean;
   isCustom: boolean;
 }
 
@@ -213,13 +217,13 @@ export interface WorkoutExercise extends Timestamped {
   notes?: string;
 }
 
-export type SetType = "warmup" | "working" | "top" | "backoff" | "drop";
+/**
+ * Warm-up or working. "Working" is the umbrella term for every effort set
+ * (top sets and back-off sets included). Drop sets are added while logging.
+ */
+export type SetType = "warmup" | "working" | "drop";
 
-export const PR_ELIGIBLE_SET_TYPES: readonly SetType[] = [
-  "working",
-  "top",
-  "backoff",
-];
+export const PR_ELIGIBLE_SET_TYPES: readonly SetType[] = ["working"];
 
 export type SetSide = "left" | "right";
 

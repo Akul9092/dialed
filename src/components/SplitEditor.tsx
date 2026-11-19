@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Sheet } from "@/components/Sheet";
 import { Button, Field, Segmented, inputClass } from "@/components/ui";
@@ -7,9 +8,11 @@ import { updateSplit } from "@/db/actions";
 import type { SplitDay, SplitDayKind, TrainingSplit } from "@/db/types";
 import { DAY_NAME_SUGGESTIONS, SPLIT_TEMPLATES, daysFromTemplate, kindForName, patternLabel } from "@/lib/splits";
 import { cx, newId } from "@/lib/util";
-import { ChevronDownIcon, ChevronUpIcon, MinusCircleIcon, PlusIcon } from "./icons";
+import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, MinusCircleIcon, PlusIcon } from "./icons";
 
 const KIND_LABEL: Record<SplitDayKind, string> = { workout: "Workout", rest: "Rest day", cardio: "Cardio" };
+
+const exerciseLabel = (n: number) => (n === 0 ? "Add exercises" : `${n} exercise${n === 1 ? "" : "s"}`);
 
 export function DayBadge({ n, kind, size = "md" }: { n: number; kind: SplitDayKind; size?: "md" | "lg" }) {
   return (
@@ -29,7 +32,17 @@ export function DayBadge({ n, kind, size = "md" }: { n: number; kind: SplitDayKi
 
 type DayEditing = { mode: "new" } | { mode: "edit"; index: number } | null;
 
-export function SplitEditor({ split, planId }: { split: TrainingSplit; planId: string }) {
+export function SplitEditor({
+  split,
+  planId,
+  exerciseCounts = {},
+}: {
+  split: TrainingSplit;
+  planId: string;
+  /** Exercises in each workout day's list, keyed by day id. */
+  exerciseCounts?: Record<string, number>;
+}) {
+  const router = useRouter();
   const [reordering, setReordering] = useState(false);
   const [editing, setEditing] = useState<DayEditing>(null);
   const [picking, setPicking] = useState(false);
@@ -81,16 +94,21 @@ export function SplitEditor({ split, planId }: { split: TrainingSplit; planId: s
               <button
                 type="button"
                 disabled={reordering}
-                onClick={() => setEditing({ mode: "edit", index: i })}
+                onClick={() =>
+                  d.kind === "workout"
+                    ? router.push(`/train/day/?plan=${planId}&day=${d.id}`)
+                    : setEditing({ mode: "edit", index: i })
+                }
                 className="flex min-h-15 flex-1 items-center gap-3 text-left disabled:cursor-default"
               >
                 <DayBadge n={i + 1} kind={d.kind} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[17px] font-medium">{d.name}</span>
                   <span className="block text-[13px] text-muted">
-                    Day {i + 1} · {KIND_LABEL[d.kind]}
+                    Day {i + 1} · {d.kind === "workout" ? exerciseLabel(exerciseCounts[d.id] ?? 0) : KIND_LABEL[d.kind]}
                   </span>
                 </span>
+                {!reordering && d.kind === "workout" && <ChevronRightIcon size={18} className="shrink-0 text-muted/70" />}
               </button>
               {reordering && (
                 <span className="flex">
@@ -170,7 +188,7 @@ export function SplitEditor({ split, planId }: { split: TrainingSplit; planId: s
   );
 }
 
-function DaySheet({
+export function DaySheet({
   day,
   dayNumber,
   onClose,

@@ -131,3 +131,23 @@ export function MinusCircleIcon(p: IconProps) {
     </svg>
   );
 }
+
+export function SearchIcon(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m20 20-4.2-4.2" />
+    </svg>
+  );
+}
+
+export function ListIcon(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <circle cx="4.5" cy="6" r="1" />
+      <circle cx="4.5" cy="12" r="1" />
+      <circle cx="4.5" cy="18" r="1" />
+    </svg>
+  );
+}

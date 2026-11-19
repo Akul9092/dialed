@@ -1,6 +1,7 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useSettings } from "@/components/AppShell";
 import { CalendarIcon, PlusIcon } from "@/components/icons";
@@ -20,16 +21,19 @@ export default function TrainPage() {
   const settings = useSettings();
   const plans = useLiveQuery(() => db.trainingPlans.orderBy("createdAt").reverse().toArray(), []);
   const splits = useLiveQuery(() => db.trainingSplits.toArray(), []);
+  const router = useRouter();
   const [creating, setCreating] = useState(false);
-  const close = useCallback(() => setCreating(false), []);
 
-  // Home links here with ?new=1 to open the new-plan sheet directly.
+  // Home links here with ?new=1 to open the new-plan sheet directly. The URL
+  // is cleaned up when the sheet closes: rewriting it while the page is still
+  // loading makes Next.js re-render the route and drop the open sheet.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("new")) {
-      setCreating(true);
-      window.history.replaceState(null, "", window.location.pathname);
-    }
+    if (new URLSearchParams(window.location.search).get("new")) setCreating(true);
   }, []);
+  const close = useCallback(() => {
+    setCreating(false);
+    if (window.location.search.includes("new=")) router.replace("/train/", { scroll: false });
+  }, [router]);
 
   const activeId = settings?.activePlanId;
   const sorted = plans
