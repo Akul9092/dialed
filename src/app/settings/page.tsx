@@ -96,7 +96,7 @@ export default function SettingsPage() {
             trailing={gymCount === undefined ? "" : String(gymCount)}
             chevron
           />
-          <Row title="Rest timer" subtitle="Coming with workout logging" disabled />
+          <Row title="Rest timer" subtitle="Coming soon" disabled />
         </List>
       </Section>
 

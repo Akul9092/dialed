@@ -2,37 +2,78 @@
 
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useEffect, useState } from "react";
 import { useSettings } from "@/components/AppShell";
 import { DumbbellIcon, PinIcon } from "@/components/icons";
-import { Button, ButtonLink, EmptyState, Page, PageHeader } from "@/components/ui";
-import { db } from "@/db/db";
-import { suggestToday } from "@/lib/schedule";
-import { localDate } from "@/lib/util";
 import { TodaySuggestion } from "@/components/TodayCard";
+import { Button, ButtonLink, EmptyState, List, Page, PageHeader, Section } from "@/components/ui";
+import { SessionRow } from "@/components/workout/SessionRow";
+import { StartWorkoutSheet } from "@/components/workout/StartWorkoutSheet";
+import { db } from "@/db/db";
+import { discardSession, finishSession } from "@/db/sessions";
+import { suggestToday } from "@/lib/schedule";
+import { formatLocalDate, localDate } from "@/lib/util";
 
 export default function HomePage() {
   const settings = useSettings();
+  const todayDate = localDate();
+  const planId = settings?.activePlanId ?? "";
+
   const activePlan = useLiveQuery(
     () => (settings?.activePlanId ? db.trainingPlans.get(settings.activePlanId) : undefined),
     [settings?.activePlanId],
   );
-  const planId = settings?.activePlanId ?? "";
   const split = useLiveQuery(
     async () => (planId ? ((await db.trainingSplits.where("planId").equals(planId).first()) ?? null) : null),
     [planId],
   );
   const sessions = useLiveQuery(() => db.workoutSessions.where("planId").equals(planId).toArray(), [planId]);
+  const all = useLiveQuery(async () => {
+    const list = await db.workoutSessions.orderBy("date").reverse().toArray();
+    return {
+      today: list.find((s) => s.date === todayDate),
+      stale: list.filter((s) => s.status === "in_progress" && s.date < todayDate),
+      last: list.find((s) => s.status === "completed" && s.date < todayDate),
+    };
+  }, [todayDate]);
   const gymCount = useLiveQuery(() => db.gyms.count(), []);
-  const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const [starting, setStarting] = useState(false);
 
+  // Set after mount: the page is pre-rendered at build time, so a date
+  // rendered on the server would never match the real day.
+  const [todayLabel, setTodayLabel] = useState("\u00a0");
+  useEffect(() => {
+    setTodayLabel(new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }));
+  }, []);
   const loading =
     settings === undefined ||
+    all === undefined ||
     (settings.activePlanId && (activePlan === undefined || split === undefined || sessions === undefined));
-  const suggestion = split ? suggestToday(split, sessions ?? [], localDate()) : ({ kind: "empty" } as const);
+  const suggestion = split ? suggestToday(split, sessions ?? [], todayDate) : ({ kind: "empty" } as const);
 
   return (
     <Page>
-      <PageHeader eyebrow={today} title="Today" />
+      <PageHeader eyebrow={todayLabel} title="Today" />
+
+      {all?.stale.map((s) => (
+        <div key={s.id} className="mb-4 rounded-2xl bg-[#FF9500]/12 p-4">
+          <p className="text-[15px]">
+            <span className="font-semibold">{s.name}</span> from{" "}
+            {formatLocalDate(s.date, { weekday: "long", month: "short", day: "numeric" })} was never finished.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button className="flex-1" onClick={() => finishSession(s.id)}>
+              Finish it
+            </Button>
+            <ButtonLink href={`/workout/?id=${s.id}`} variant="secondary" className="flex-1">
+              Open
+            </ButtonLink>
+            <Button variant="danger" onClick={() => discardSession(s.id)}>
+              Discard
+            </Button>
+          </div>
+        </div>
+      ))}
 
       {loading ? (
         <div className="h-48 animate-pulse rounded-3xl bg-surface" />
@@ -51,10 +92,15 @@ export default function HomePage() {
               Set up your split
             </ButtonLink>
           )}
-          <Button size="lg" className="mt-6 w-full" disabled>
-            Start workout
-          </Button>
-          <p className="mt-2.5 text-center text-[13px] text-muted">Workout logging arrives in the next build.</p>
+          {all?.today ? (
+            <ButtonLink href={`/workout/?id=${all.today.id}`} size="lg" className="mt-6 w-full">
+              {all.today.status === "in_progress" ? `Resume ${all.today.name}` : `View today's ${all.today.name}`}
+            </ButtonLink>
+          ) : (
+            <Button size="lg" className="mt-6 w-full" onClick={() => setStarting(true)}>
+              Start workout
+            </Button>
+          )}
         </section>
       ) : (
         <EmptyState
@@ -67,6 +113,16 @@ export default function HomePage() {
             </ButtonLink>
           }
         />
+      )}
+
+      {all?.last && (
+        <div className="mt-6">
+          <Section title="Last workout">
+            <List>
+              <SessionRow session={all.last} />
+            </List>
+          </Section>
+        </div>
       )}
 
       <Link
@@ -84,6 +140,8 @@ export default function HomePage() {
         </span>
         <span className="text-[15px] text-accent">Manage</span>
       </Link>
+
+      {starting && activePlan && <StartWorkoutSheet planId={activePlan.id} onClose={() => setStarting(false)} />}
     </Page>
   );
 }

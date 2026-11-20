@@ -7,7 +7,9 @@ import { useSettings } from "@/components/AppShell";
 import { PlanSheet } from "@/components/PlanSheet";
 import { SplitEditor } from "@/components/SplitEditor";
 import { TodaySuggestion } from "@/components/TodayCard";
-import { Button, EmptyState, Field, Page, PageHeader, Pill, Section, Segmented, inputClass } from "@/components/ui";
+import { SessionRow } from "@/components/workout/SessionRow";
+import { StartWorkoutSheet } from "@/components/workout/StartWorkoutSheet";
+import { Button, ButtonLink, EmptyState, Field, List, Page, PageHeader, Pill, Section, Segmented, inputClass } from "@/components/ui";
 import { CalendarIcon } from "@/components/icons";
 import { setActivePlan, updateSplit } from "@/db/actions";
 import { db } from "@/db/db";
@@ -39,6 +41,7 @@ function PlanPage() {
     return rows.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.templateId]: (acc[r.templateId] ?? 0) + 1 }), {});
   }, [id]);
   const [editing, setEditing] = useState(false);
+  const [starting, setStarting] = useState(false);
   const close = useCallback(() => setEditing(false), []);
 
   if (plan === undefined || split === undefined || sessions === undefined || !settings) {
@@ -62,6 +65,8 @@ function PlanPage() {
   const today = localDate();
   const effectiveSplit = split ?? { mode: "sequence" as const, anchorDate: today, days: [] };
   const suggestion = suggestToday(effectiveSplit, sessions, today);
+  const todaySession = sessions.find((s) => s.date === today);
+  const history = [...sessions].sort((a, b) => (a.date < b.date ? 1 : -1));
   const dates =
     plan.startDate || plan.endDate
       ? `${plan.startDate ? formatLocalDate(plan.startDate) : "Open"} to ${plan.endDate ? formatLocalDate(plan.endDate) : "ongoing"}`
@@ -98,6 +103,15 @@ function PlanPage() {
       <Section title="Today">
         <div className="rounded-2xl bg-surface p-4">
           <TodaySuggestion suggestion={suggestion} totalDays={effectiveSplit.days.length} />
+          {todaySession ? (
+            <ButtonLink href={`/workout/?id=${todaySession.id}`} className="mt-4 w-full">
+              {todaySession.status === "in_progress" ? `Resume ${todaySession.name}` : `View today's ${todaySession.name}`}
+            </ButtonLink>
+          ) : (
+            <Button className="mt-4 w-full" onClick={() => setStarting(true)}>
+              Start today's workout
+            </Button>
+          )}
         </div>
       </Section>
 
@@ -142,9 +156,21 @@ function PlanPage() {
         </div>
       </Section>
 
-      <p className="px-4 text-[13px] leading-snug text-muted">
-        Tap a workout day to choose its exercises. Logging workouts comes next.
-      </p>
+      <Section title={`History${history.length ? ` · ${history.length}` : ""}`}>
+        {history.length ? (
+          <List>
+            {history.map((s) => (
+              <SessionRow key={s.id} session={s} />
+            ))}
+          </List>
+        ) : (
+          <p className="rounded-2xl bg-surface px-4 py-5 text-center text-[15px] text-muted">
+            Workouts you log in this plan show up here.
+          </p>
+        )}
+      </Section>
+
+      {starting && <StartWorkoutSheet planId={plan.id} onClose={() => setStarting(false)} />}
 
       {editing && (
         <PlanSheet plan={plan} isActive={isActive} onClose={close} onDeleted={() => router.replace("/train/")} />

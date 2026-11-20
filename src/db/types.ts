@@ -232,10 +232,13 @@ export interface ExerciseSet extends Timestamped {
   workoutExerciseId: ID;
   order: number;
   type: SetType;
-  /** For bodyweight exercises this is the ADDED weight only. */
-  weight: number;
+  /**
+   * For bodyweight exercises this is the ADDED weight only.
+   * null means not entered yet (different from 0).
+   */
+  weight: number | null;
   unit: WeightUnit;
-  reps: number;
+  reps: number | null;
   completed: boolean;
   /** Drop sets point at the set they dropped from. */
   parentSetId?: ID;
